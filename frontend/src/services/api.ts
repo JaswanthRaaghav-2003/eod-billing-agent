@@ -6,16 +6,25 @@ import {
   DaySummary
 } from '../types';
 
-const API_BASE = '/api';
+const RAW_API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = RAW_API_BASE ? `${RAW_API_BASE}/api` : '/api';
+
+function buildUrl(path: string): URL {
+  const fullPath = `${API_BASE}${path}`;
+  if (fullPath.startsWith('http://') || fullPath.startsWith('https://')) {
+    return new URL(fullPath);
+  }
+  return new URL(fullPath, window.location.origin);
+}
 
 export async function fetchAvailableDays(): Promise<DaySummary[]> {
-  const res = await fetch(`${API_BASE}/ingest/days`);
+  const res = await fetch(buildUrl('/ingest/days').toString());
   if (!res.ok) throw new Error('Failed to fetch available days');
   return res.json();
 }
 
 export async function seedSampleData(): Promise<{ message: string; datasets: any }> {
-  const res = await fetch(`${API_BASE}/ingest/seed-sample-data`, {
+  const res = await fetch(buildUrl('/ingest/seed-sample-data').toString(), {
     method: 'POST'
   });
   if (!res.ok) throw new Error('Failed to seed sample datasets');
@@ -23,7 +32,7 @@ export async function seedSampleData(): Promise<{ message: string; datasets: any
 }
 
 export async function fetchReconciliation(date: string, clinicId?: string): Promise<ReconciliationReport> {
-  const url = new URL(`${API_BASE}/reconciliation/${date}`, window.location.origin);
+  const url = buildUrl(`/reconciliation/${date}`);
   if (clinicId) url.searchParams.set('clinic_id', clinicId);
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`Failed to fetch reconciliation for ${date}`);
@@ -31,7 +40,7 @@ export async function fetchReconciliation(date: string, clinicId?: string): Prom
 }
 
 export async function fetchAnalytics(date: string, clinicId?: string): Promise<AnalyticsReport> {
-  const url = new URL(`${API_BASE}/analytics/${date}`, window.location.origin);
+  const url = buildUrl(`/analytics/${date}`);
   if (clinicId) url.searchParams.set('clinic_id', clinicId);
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`Failed to fetch analytics for ${date}`);
@@ -44,7 +53,7 @@ export async function fetchNarrative(
   provider: string = 'auto',
   recipient?: string
 ): Promise<NarrativeReport> {
-  const url = new URL(`${API_BASE}/narrative/${date}`, window.location.origin);
+  const url = buildUrl(`/narrative/${date}`);
   if (clinicId) url.searchParams.set('clinic_id', clinicId);
   if (provider) url.searchParams.set('provider', provider);
   if (recipient) url.searchParams.set('recipient', recipient);
@@ -60,7 +69,7 @@ export async function generateNarrativeCustom(params: {
   apiKey?: string;
   recipient?: string;
 }): Promise<NarrativeReport> {
-  const res = await fetch(`${API_BASE}/narrative/generate`, {
+  const res = await fetch(buildUrl('/narrative/generate').toString(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -80,7 +89,7 @@ export async function uploadBillingJson(
   strict: boolean = false,
   clinicName?: string
 ): Promise<IngestionResult> {
-  const url = new URL(`${API_BASE}/ingest`, window.location.origin);
+  const url = buildUrl('/ingest');
   url.searchParams.set('strict', String(strict));
   if (clinicName) url.searchParams.set('clinic_name', clinicName);
 
@@ -105,7 +114,7 @@ export async function uploadBillingFile(
   strict: boolean = false,
   clinicName?: string
 ): Promise<IngestionResult> {
-  const url = new URL(`${API_BASE}/ingest/file`, window.location.origin);
+  const url = buildUrl('/ingest/file');
   url.searchParams.set('strict', String(strict));
   if (clinicName) url.searchParams.set('clinic_name', clinicName);
 
